@@ -242,14 +242,16 @@ public:
 						x = gen_jump_s(i, 0);
 						if(x != NULL){
 							moves->push_back(*x);
-							delete[] x;
+							//if(x->seq!=NULL) delete[] x->seq;
+							delete x;
 						}
 					}
 					if(t[i + delta_dir(1)] == WHITE || t[i + delta_dir(1)] == QWHITE){
 						x = gen_jump_s(i, 1);
 						if(x != NULL){
 							moves->push_back(*x);
-							delete[] x;
+							//if(x->seq!=NULL) delete[] x->seq;
+							delete x;
 						}
 					}
 				}
@@ -260,14 +262,16 @@ public:
 						x = gen_jump_s(i, 2);
 						if(x != NULL){
 							moves->push_back(*x);
-							delete[] x;
+							//if(x->seq!=NULL) delete[] x->seq;
+							delete x;
 						}
 					}
 					if(t[i + delta_dir(3)] == BLACK || t[i + delta_dir(3)] == QBLACK){
 						x = gen_jump_s(i, 3);
 						if(x != NULL){
 							moves->push_back(*x);
-							delete[] x;
+							//if(x->seq!=NULL) delete[] x->seq;
+							delete x;
 						}
 					}
 				}
@@ -354,6 +358,7 @@ int main(){
 		side = !side;
 		delete m;
 		printf("\n\n");
-		getc(stdin);
+		char c = getc(stdin);
+		if(c=='q')break;
 	}
 }
