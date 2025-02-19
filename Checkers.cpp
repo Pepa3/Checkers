@@ -1,14 +1,15 @@
-﻿#include <iostream>
-#include <vector>
+﻿#include <algorithm>
+#include <iostream>
 #include <cassert>
+#include <variant>
 #include <string>
-#include <algorithm>
+#include <vector>
 #include <random>
 
 #define NIY assert(0 && "Not implemented yet!");
 
 using namespace std;
-
+constexpr int minimax_depth = 3;
 class Board{
 public:
 	enum tile : uint8_t{ EMPTY = 0, BLACK, WHITE, QBLACK, QWHITE, COUNT };
@@ -35,7 +36,15 @@ public:
 			inline bool operator!= (tile v){ if(j >= 0 && j < s->size)return s->t[j] != v; else return v != COUNT; }
 		};
 		State():size(0){}
-		State(int size):size(size){ t = new tile[size];
+		State(State& other){
+			this->size = other.size;
+			this->t = new tile[size];
+			for(int i = 0; i < size; i++){
+				t[i] = other.t[i];
+			}
+		}
+		State(int size):size(size){
+			t = new tile[size];
 			for(int i = 0; i < size; i++){
 				t[i] = EMPTY;
 			}
@@ -53,6 +62,9 @@ public:
 		Move* seq;
 		Move() :jump(true), pos(0), over(0), dst(0), seq(NULL){}
 		Move(uint8_t pos, uint8_t over, uint8_t dst, bool jump, Move* seq):jump(jump), dst(dst), over(over), pos(pos), seq(seq){}
+		void print(){
+			cout << "m[" << pos % 8 << ", " << pos / 8 << "]to[" << dst % 8 << ", " << dst / 8 << "]\n";
+		}
 	};
 	State t;
 	int size;
@@ -64,6 +76,10 @@ public:
 				t[size * size - i - 1] = BLACK;
 			}
 		}
+	}
+	Board(Board& other){
+		this->t = State(other.t);
+		this->size = other.size;
 	}
 	~Board(){ delete[] t.t; }
 	void print(){
@@ -79,7 +95,7 @@ public:
 	vector<Move>* generate_moves(bool side){//side black=0, white=1
 		int p = possible_jumps(side);
 		if(p!=0){
-			cout << "Must jump" << endl;
+			//cout << "Must jump" << endl;
 			return generate_jumps(side,p);
 		}
 		return generate_slides(side);
@@ -103,10 +119,10 @@ public:
 		if(max == 0)return t[pos + diff] == EMPTY && bounds(pos, diff, 1);
 		if(max == 1)return (t[pos + diff] != EMPTY && t[pos + diff] != COUNT && t[pos + diff * 2] == EMPTY) && bounds(pos,diff,2);
 		if(max > 1){
-			for(int i = 1; i < max; i++){
-				if(t[pos + diff * i] != EMPTY)return false;//TODO:bounds doesnt work properly
+			for(int i = 1; i <= max; i++){
+				if(t[pos + diff * i] != EMPTY)return false;
 			}
-			return bounds(pos,diff,max);
+			return bounds(pos, diff, max) && (pos + diff * max) < (size * size);
 		}
 		assert(0 && "Unreachable");
 		return false;
@@ -133,7 +149,7 @@ public:
 			if(t[pos + diff * i] == (tile) (BLACK + side) || t[pos + diff * i] == (tile) (QBLACK + side) || t[pos + diff * i] == COUNT || !bounds(pos,diff,i))break;
 			if(t[pos + diff * i] == EMPTY)continue;
 			if((t[pos + diff * i] == (tile) (BLACK + !side) || t[pos + diff * i] == (tile) (QBLACK + !side))
-				&& t[pos + diff * (i + 1)] == EMPTY)return true;
+				&& t[pos + diff * (i + 1)] == EMPTY && bounds(pos, diff, i + 1))return true;
 		}//TODO:check
 		return false;
 	}
@@ -312,15 +328,21 @@ public:
 		return moves;
 	}
 
-	bool make_move(Move* move){
-		assert(move != NULL);
+	bool make_move(const Move* move){
+		if(move == NULL){
+			cout << "No moves left." << endl;
+			return false;
+		}
 		if(!move->jump){
-			assert(t[move->dst] == EMPTY);
+			if(t[move->dst] != EMPTY){
+				cout << "! move->dst != EMPTY" << endl;
+				return false;
+			}
 			Board::tile temp = t[move->pos];
 			t[move->pos] = EMPTY;
 			t[move->dst] = temp;
 		}else{
-			Move* next=move;
+			const Move* next = move;
 			//while(true){
 				assert(t[move->dst] == EMPTY);
 				Board::tile temp = t[move->pos];
@@ -339,7 +361,79 @@ public:
 			if(move->dst / 8 % 7 == 0)t[move->dst] = (tile)(t[move->dst]+2);
 		return move->seq != NULL;
 	}
+	double eval(){
+		double s = 0;
+		for(int i = 0; i < size*size; i++){
+			switch(t[i]){
+			case BLACK:
+				s += 0.1;
+				break;
+			case WHITE:
+				s -= 0.1;
+				break;
+			case QBLACK:
+				s += 1;
+				break;
+			case QWHITE:
+				s -= 1;
+				break;
+			default:
+				break;
+			}
+		}
+		return s;
+	}
 };
+
+std::variant<double,Board::Move*> minimax(Board& b, int depth, bool side){
+	if(depth == 0)return b.eval();
+	Board::Move* best = NULL;
+	if(!side){
+		double maxEval = -1000000;
+		auto* m = b.generate_moves(side);
+		if(depth == minimax_depth){
+			cout << m->size() << " moves\n";
+		}
+		for(const auto& m1 : *m){
+			Board b1 = Board(b);
+			b1.make_move(&m1);
+			double e = get<double>(minimax(b1, depth - 1, !side));
+			if(depth == minimax_depth){
+				cout << e << "\n";
+			}
+			if(depth == minimax_depth && e > maxEval){
+				if(best != NULL)delete best;
+				best = new Board::Move(m1);
+			}
+			maxEval = max(maxEval, e);
+		}
+		delete m;
+		if(depth == minimax_depth){
+			return best;
+		} else{
+			return maxEval;
+		}
+	} else{
+		double minEval = 1000000;
+		auto* m = b.generate_moves(side);
+		for(auto& m1 : *m){
+			Board b1 = Board(b);
+			b1.make_move(&m1);
+			double e = get<double>(minimax(b1, depth - 1, !side));
+			if(depth == minimax_depth && e < minEval){
+				if(best != NULL)delete best;
+				best = new Board::Move(m1);
+			}
+			minEval = min(minEval, e);
+		}
+		delete m;
+		if(depth == minimax_depth){
+			return best;
+		} else{
+			return minEval;
+		}
+	}
+}
 
 int main(){
 	std::random_device rd;
@@ -347,14 +441,23 @@ int main(){
 	Board b = Board(8);
 	bool side = false;
 	while(true){
-		b.print();
+		//b.print();
 		vector<Board::Move>* m = b.generate_moves(side);
 
 		for(Board::Move& move : *m){
 			printf("Move from %s to %s, jump: %d\n", b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
 		}
+		b.print();
+		Board::Move* best = get<Board::Move*>(minimax(b, minimax_depth, side));
+		if(best == NULL){
+			cerr << "No move!\n";
+			break;
+		}
 		shuffle(m->begin(),m->end(),g);
-		b.make_move(m->data());
+		b.make_move(best);
+		best->print();
+		delete best;
+		b.print();
 		side = !side;
 		delete m;
 		printf("\n\n");
