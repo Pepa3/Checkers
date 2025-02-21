@@ -487,6 +487,9 @@ int main(){
 		//delete best;
 		b.print();
 		side = !side;
+		for(const Board::Move& move : *m){
+			if(move.seq!=NULL)delete[] move.seq;
+		}
 		delete m;
 		printf("\n\n");
 		char c = getc(stdin);
