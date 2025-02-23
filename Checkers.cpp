@@ -95,7 +95,7 @@ public:
 	vector<Move>* generate_moves(bool side){//side black=0, white=1
 		int p = possible_jumps(side);
 		if(p!=0){
-			//cout << "Must jump" << endl;
+			cout << "Must jump" << endl;
 			return generate_jumps(side,p);
 		}
 		return generate_slides(side);
@@ -148,9 +148,14 @@ public:
 		for(int i = 1; i < size; i++){
 			if(t[pos + diff * i] == (tile) (BLACK + side) || t[pos + diff * i] == (tile) (QBLACK + side) || t[pos + diff * i] == COUNT || !bounds(pos,diff,i))break;
 			if(t[pos + diff * i] == EMPTY)continue;
-			if((t[pos + diff * i] == (tile) (BLACK + !side) || t[pos + diff * i] == (tile) (QBLACK + !side))
-				&& t[pos + diff * (i + 1)] == EMPTY && bounds(pos, diff, i + 1))return true;
-		}//TODO:check
+			if((t[pos + diff * i] == (tile) (BLACK + !side) || t[pos + diff * i] == (tile) (QBLACK + !side))){
+				if(t[pos + diff * (i + 1)] == EMPTY && bounds(pos, diff, i + 1)){
+					return true;
+				} else{
+					return false;
+				}
+			}
+		}
 		return false;
 	}
 	inline int possible_jumps(bool side){
@@ -469,30 +474,36 @@ int main(){
 	Board b = Board(8);
 	bool side = false;
 	while(true){
-		//b.print();
 		vector<Board::Move>* m = b.generate_moves(side);
 
-		for(Board::Move& move : *m){
-			printf("Move from %s to %s, jump: %d\n", b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+		for(int i = 0; i < m->size();i++){
+			Board::Move& move = m->at(i);
+			printf("%d) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
 		}
 		b.print();
-		//Board::Move* best = get<Board::Move*>(minimax(b, minimax_depth, side));
-		/*if(best == NULL){
-			cerr << "No move!\n";
-			break;
-		}*/
-		shuffle(m->begin(),m->end(),g);
-		b.make_move(&m->at(0));
-		//best->print();
-		//delete best;
+		printf("Please select move(0-%d)\n", m->size()-1);
+		string a = "";
+		cin >> a;
+		if(a == "q")break;
+		if(a == "b"){
+			Board::Move* best = get<Board::Move*>(minimax(b, minimax_depth, side));
+			if(best == NULL){
+				cerr << "No move!\n";
+				break;
+			}
+			best->print();
+			b.make_move(best);
+			delete best;
+		}else{
+			int s = std::stoi(a);
+			b.make_move(&m->at(s));
+		}
+		//shuffle(m->begin(),m->end(),g);
 		b.print();
 		side = !side;
 		for(const Board::Move& move : *m){
 			if(move.seq!=NULL)delete[] move.seq;
 		}
 		delete m;
-		printf("\n\n");
-		char c = getc(stdin);
-		if(c=='q')break;
 	}
 }
