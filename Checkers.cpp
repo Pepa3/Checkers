@@ -2,11 +2,10 @@
 #include <iostream>
 #include <cassert>
 #include <variant>
+#include <chrono>
+#include <random>
 #include <string>
 #include <vector>
-#include <random>
-
-#define NIY assert(0 && "Not implemented yet!");
 
 using namespace std;
 constexpr int minimax_depth = 3;
@@ -95,7 +94,7 @@ public:
 	vector<Move>* generate_moves(bool side){//side black=0, white=1
 		int p = possible_jumps(side);
 		if(p!=0){
-			cout << "Must jump" << endl;
+			//cout << "Must jump" << endl;
 			return generate_jumps(side,p);
 		}
 		return generate_slides(side);
@@ -171,9 +170,12 @@ public:
 
 	Move* gen_jump_s(int pos, int dir){
 		if(can_move(pos, dir, 1)){
-			Move* x = new Move(pos,pos+delta_dir(dir),pos+delta_dir(dir)*2,true,NULL);
-			Move* seq0 = gen_jump_s(pos + delta_dir(dir) * 2, dir<=1?0:2);
-			Move* seq1 = gen_jump_s(pos + delta_dir(dir) * 2, dir<=1?1:3);
+			int nside = dir <= 1;
+			int diff = delta_dir(dir);
+			if(t[pos + diff] != (tile) (BLACK + nside))return NULL;
+			Move* x = new Move(pos,pos+diff,pos+diff*2,true,NULL);
+			Move* seq0 = gen_jump_s(pos + diff * 2, nside?0:2);
+			Move* seq1 = gen_jump_s(pos + diff * 2, nside?1:3);
 			if(seq0 != NULL && seq1 != NULL){
 				x->seq = new Move[3]();
 				x->seq[0] = *seq0;
@@ -208,19 +210,14 @@ public:
 					if(t[pos + diff * i] == EMPTY && bounds(pos, diff, i)){
 						m[k].dst = pos + diff * i;
 						m[k].jump = true;
-						/*m[k].seq = ;//{}
-						NIY
 						for(int dir2 = 0; dir2 < 4; dir2++){
-							if(can_jump_q((bool)(t[pos]-QBLACK), i, dir2)){
-								x = gen_jump_q(i, dir2);
+							if(dir2!=((dir+2)%4) && can_jump_q((bool)(t[pos]-QBLACK), pos+diff*i, dir2)){
+								Move* x = gen_jump_q(pos+diff*i, dir2);
 								if(x != NULL){
-									for(int j = 0; j < size - 2; j++){
-										if(x[j].jump) movesQ->push_back(x[j]);
-									}
-									delete[] x;
+									m[k].seq = x;
 								}
 							}
-						}*/
+						}
 						k++;
 					} else{
 						return m;
