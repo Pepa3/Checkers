@@ -8,7 +8,7 @@
 #include <vector>
 
 using namespace std;
-constexpr int minimax_depth = 6;
+constexpr int minimax_depth = 2*3;
 class Board{
 public:
 	enum tile : uint8_t{ EMPTY = 0, BLACK, WHITE, QBLACK, QWHITE, COUNT };
@@ -326,7 +326,7 @@ public:
 				for(int dir = 0; dir < 4; dir++){
 					for(int j = 1; j < size; j++){
 						int diff = delta_dir(dir);
-						if(can_move(i, dir, max(2, j))){
+						if(j == 1 && t[i + diff] == EMPTY && bounds(i,diff,1) || j != 1 && can_move(i, dir, max(2, j))){
 							moves->push_back(Move(i, 0, i + diff * j, false, NULL));
 						} else{
 							break;
@@ -392,10 +392,10 @@ public:
 		for(int i = 0; i < size*size; i++){
 			switch(t[i]){
 			case BLACK:
-				s += 1.0;
+				s += 1+i/size;
 				break;
 			case WHITE:
-				s -= 1.0;
+				s -= 1+(size-i/size);
 				break;
 			case QBLACK:
 				s += 10.0;
@@ -424,7 +424,6 @@ std::variant<double,Board::Move*> minimax(Board& b, int depth, double alpha, dou
 			Board b1 = Board(b);
 			b1.make_move(&m1);
 			double e = get<double>(minimax(b1, depth - 1, alpha, beta, !side));
-			//cout << depth << ":" << e << "\n";
 			if(depth == minimax_depth && e >= maxEval){
 				if(best != NULL)delete best;
 				best = new Board::Move(m1);
@@ -446,14 +445,13 @@ std::variant<double,Board::Move*> minimax(Board& b, int depth, double alpha, dou
 			Board b1 = Board(b);
 			b1.make_move(&m1);
 			double e = get<double>(minimax(b1, depth - 1, alpha, beta, !side));
-			//cout << depth << ":" << e << "\n";
 			if(depth == minimax_depth && e <= minEval){
 				if(best != NULL)delete best;
 				best = new Board::Move(m1);
 			}
 			minEval = min(minEval, e);
 			beta = min(beta, e);
-			//if(beta <= alpha)break;
+			//if(beta <= alpha)break;//doesnt free moves
 		}
 		delete m;
 		if(depth == minimax_depth){
