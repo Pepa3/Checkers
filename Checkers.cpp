@@ -8,7 +8,7 @@
 #include <vector>
 
 using namespace std;
-constexpr int minimax_depth = 3;
+constexpr int minimax_depth = 6;
 class Board{
 public:
 	enum tile : uint8_t{ EMPTY = 0, BLACK, WHITE, QBLACK, QWHITE, COUNT };
@@ -172,7 +172,7 @@ public:
 		if(can_move(pos, dir, 1)){
 			int nside = dir <= 1;
 			int diff = delta_dir(dir);
-			if(t[pos + diff] != (tile) (BLACK + nside))return NULL;
+			if(t[pos + diff] != (tile) (BLACK + nside) && t[pos + diff] != (tile) (QBLACK + nside))return NULL;
 			Move* x = new Move(pos,pos+diff,pos+diff*2,true,NULL);
 			Move* seq0 = gen_jump_s(pos + diff * 2, nside?0:2);
 			Move* seq1 = gen_jump_s(pos + diff * 2, nside?1:3);
@@ -197,12 +197,12 @@ public:
 		}
 	}
 
-	Move* gen_jump_q(int pos, int dir){
+	Move* gen_jump_q(int pos, int dir,vector<int> seq){
 		int diff = delta_dir(dir);
 		Move* m = new Move[size-2]();
 		int k = 0;
 		for(int i = 1; i < size; i++){
-			if(t[pos + diff * i] != EMPTY && t[pos + diff * i] != COUNT){
+			if(t[pos + diff * i] != EMPTY && t[pos + diff * i] != COUNT && find(seq.begin(), seq.end(), (pos+diff*i)) == seq.end()){
 				for(int j = 0; j < size - 2; j++){
 					m[j] = Move(pos, pos + diff * i, 0, false, NULL);
 				}
@@ -212,7 +212,8 @@ public:
 						m[k].jump = true;
 						for(int dir2 = 0; dir2 < 4; dir2++){
 							if(dir2!=((dir+2)%4) && can_jump_q((bool)(t[pos]-QBLACK), pos+diff*i, dir2)){
-								Move* x = gen_jump_q(pos+diff*i, dir2);
+								seq.push_back(m[k].over);
+								Move* x = gen_jump_q(pos+diff*i, dir2,seq);//stack overflow
 								if(x != NULL){
 									m[k].seq = x;
 								}
@@ -226,8 +227,7 @@ public:
 				return m;
 			}
 		}
-		assert(0 && "Unreachable");
-		return NULL;
+		return NULL;//reachable if infinite sequence of queen jumps
 	}
 
 	vector<Move>* generate_jumps(bool side, int type){
@@ -242,7 +242,7 @@ public:
 				if(!side){
 					for(int dir = 0; dir < 4; dir++){
 						if(can_jump_q(side, i, dir)){
-							x = gen_jump_q(i, dir);
+							x = gen_jump_q(i, dir, vector<int>());
 							if(x != NULL){
 								for(int j = 0; j < size - 2; j++){
 									if(x[j].jump) movesQ->push_back(x[j]);
@@ -257,7 +257,7 @@ public:
 				if(side){
 					for(int dir = 0; dir < 4; dir++){
 						if(can_jump_q(side, i, dir)){
-							x = gen_jump_q(i, dir);
+							x = gen_jump_q(i, dir,vector<int>());
 							if(x != NULL){
 								for(int j = 0; j < size - 2; j++){
 									if(x[j].jump) movesQ->push_back(x[j]);
@@ -274,7 +274,6 @@ public:
 						x = gen_jump_s(i, 0);
 						if(x != NULL){
 							movesS->push_back(*x);
-							//if(x->seq!=NULL) delete[] x->seq;
 							delete x;
 						}
 					}
@@ -282,7 +281,6 @@ public:
 						x = gen_jump_s(i, 1);
 						if(x != NULL){
 							movesS->push_back(*x);
-							//if(x->seq!=NULL) delete[] x->seq;
 							delete x;
 						}
 					}
@@ -294,7 +292,6 @@ public:
 						x = gen_jump_s(i, 2);
 						if(x != NULL){
 							movesS->push_back(*x);
-							//if(x->seq!=NULL) delete[] x->seq;
 							delete x;
 						}
 					}
@@ -302,7 +299,6 @@ public:
 						x = gen_jump_s(i, 3);
 						if(x != NULL){
 							movesS->push_back(*x);
-							//if(x->seq!=NULL) delete[] x->seq;
 							delete x;
 						}
 					}
@@ -366,7 +362,6 @@ public:
 		}else{
 			const Move* next = move;
 			while(true){
-				cout << "jump\n";
 				if(t[next->dst] != EMPTY){
 					cout << "! move->dst != EMPTY" << pretty_pos(next->pos)<< ">" << pretty_pos(next->dst) << endl;
 					return false;
@@ -416,7 +411,7 @@ public:
 	}
 };
 
-std::variant<double,Board::Move*> minimax(Board& b, int depth, bool side){
+std::variant<double,Board::Move*> minimax(Board& b, int depth, double alpha, double beta, bool side){
 	if(depth == .0)return b.eval();
 	Board::Move* best = NULL;
 	if(!side){
@@ -428,13 +423,15 @@ std::variant<double,Board::Move*> minimax(Board& b, int depth, bool side){
 		for(const auto& m1 : *m){
 			Board b1 = Board(b);
 			b1.make_move(&m1);
-			double e = get<double>(minimax(b1, depth - 1, !side));
+			double e = get<double>(minimax(b1, depth - 1, alpha, beta, !side));
 			//cout << depth << ":" << e << "\n";
 			if(depth == minimax_depth && e >= maxEval){
 				if(best != NULL)delete best;
 				best = new Board::Move(m1);
 			}
 			maxEval = max(maxEval, e);
+			alpha = max(alpha, e);
+			//if(beta <= alpha)break;
 		}
 		delete m;
 		if(depth == minimax_depth){
@@ -448,13 +445,15 @@ std::variant<double,Board::Move*> minimax(Board& b, int depth, bool side){
 		for(auto& m1 : *m){
 			Board b1 = Board(b);
 			b1.make_move(&m1);
-			double e = get<double>(minimax(b1, depth - 1, !side));
+			double e = get<double>(minimax(b1, depth - 1, alpha, beta, !side));
 			//cout << depth << ":" << e << "\n";
 			if(depth == minimax_depth && e <= minEval){
 				if(best != NULL)delete best;
 				best = new Board::Move(m1);
 			}
 			minEval = min(minEval, e);
+			beta = min(beta, e);
+			//if(beta <= alpha)break;
 		}
 		delete m;
 		if(depth == minimax_depth){
@@ -483,7 +482,11 @@ int main(){
 		cin >> a;
 		if(a == "q")break;
 		if(a == "b"){
-			Board::Move* best = get<Board::Move*>(minimax(b, minimax_depth, side));
+			const auto t1 = chrono::high_resolution_clock::now();
+			Board::Move* best = get<Board::Move*>(minimax(b, minimax_depth, -1000, 1000, side));
+			const auto t2 = chrono::high_resolution_clock::now();
+			std::chrono::duration t = t2 - t1;
+			cout << "Took " << t.count()/1000000 << "ms" << endl;
 			if(best == NULL){
 				cerr << "No move!\n";
 				break;
