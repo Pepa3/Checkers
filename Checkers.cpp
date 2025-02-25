@@ -62,7 +62,7 @@ public:
 		Move() :jump(true), pos(0), over(0), dst(0), seq(NULL){}
 		Move(uint8_t pos, uint8_t over, uint8_t dst, bool jump, Move* seq):jump(jump), dst(dst), over(over), pos(pos), seq(seq){}
 		void print(){
-			cout << "m[" << pos % 8 << ", " << pos / 8 << "]to[" << dst % 8 << ", " << dst / 8 << "]\n";
+			cout << "m[" << (pos % 8)+1 << ", " << (pos / 8)+1 << "]to[" << (dst % 8)+1 << ", " << (dst / 8)+1 << "]\n";
 		}
 	};
 	State t;
@@ -100,7 +100,7 @@ public:
 		return generate_slides(side);
 	}
 	inline string pretty_pos(int pos){
-		return "["+to_string(pos%size)+","+to_string(pos/size)+"]";
+		return "["+to_string((pos%size)+1)+","+to_string((pos/size)+1)+"]";
 	}
 	constexpr inline int delta_dir(const int dir){
 		//0=^\ 1=/^ 2=\v 3=v/ 
@@ -370,7 +370,7 @@ public:
 				t[next->pos] = EMPTY;
 				t[next->over] = EMPTY;
 				t[next->dst] = temp;
-				if(next->seq != NULL){
+				if(next->seq != NULL && next->seq->jump==true){
 					next = next->seq;
 				}else{
 					break;
@@ -388,26 +388,27 @@ public:
 		return move->seq != NULL;
 	}
 	double eval(){
-		double s = 0.0;
+		double sb = 1;
+		double sw = 1;
 		for(int i = 0; i < size*size; i++){
 			switch(t[i]){
 			case BLACK:
-				s += 1+i/size;
+				sb += 1+i/size;
 				break;
 			case WHITE:
-				s -= 1+(size-i/size);
+				sw += 1+(size-i/size-1);
 				break;
 			case QBLACK:
-				s += 10.0;
+				sb += 10.0;
 				break;
 			case QWHITE:
-				s -= 10.0;
+				sw += 10.0;
 				break;
 			default:
 				break;
 			}
 		}
-		return s;
+		return (sb-sw)/(sb+sw);
 	}
 };
 
@@ -417,20 +418,20 @@ std::variant<double,Board::Move*> minimax(Board& b, int depth, double alpha, dou
 	if(!side){
 		double maxEval = -1000.0;
 		auto* m = b.generate_moves(side);
-		if(depth == minimax_depth){
-			cout << m->size() << " moves\n";
-		}
 		for(const auto& m1 : *m){
 			Board b1 = Board(b);
 			b1.make_move(&m1);
 			double e = get<double>(minimax(b1, depth - 1, alpha, beta, !side));
-			if(depth == minimax_depth && e >= maxEval){
-				if(best != NULL)delete best;
-				best = new Board::Move(m1);
+			if(depth == minimax_depth){
+				printf("%f) Move from %s to %s, jump: %d\n", e, b.pretty_pos(m1.pos).c_str(), b.pretty_pos(m1.dst).c_str(), m1.jump);
 			}
 			maxEval = max(maxEval, e);
 			alpha = max(alpha, e);
 			//if(beta <= alpha)break;
+			if(depth == minimax_depth && e >= maxEval){
+				if(best != NULL)delete best;
+				best = new Board::Move(m1);
+			}
 		}
 		delete m;
 		if(depth == minimax_depth){
@@ -445,13 +446,16 @@ std::variant<double,Board::Move*> minimax(Board& b, int depth, double alpha, dou
 			Board b1 = Board(b);
 			b1.make_move(&m1);
 			double e = get<double>(minimax(b1, depth - 1, alpha, beta, !side));
-			if(depth == minimax_depth && e <= minEval){
-				if(best != NULL)delete best;
-				best = new Board::Move(m1);
+			if(depth == minimax_depth){
+				printf("%f) Move from %s to %s, jump: %d\n", e, b.pretty_pos(m1.pos).c_str(), b.pretty_pos(m1.dst).c_str(), m1.jump);
 			}
 			minEval = min(minEval, e);
 			beta = min(beta, e);
 			//if(beta <= alpha)break;//doesnt free moves
+			if(depth == minimax_depth && e <= minEval){
+				if(best != NULL)delete best;
+				best = new Board::Move(m1);
+			}
 		}
 		delete m;
 		if(depth == minimax_depth){
@@ -467,7 +471,8 @@ int main(){
 	std::mt19937 g(rd());
 	Board b = Board(8);
 	bool side = false;
-	while(true){
+	bool quit = false;
+	while(!quit){
 		vector<Board::Move>* m = b.generate_moves(side);
 
 		for(int i = 0; i < m->size();i++){
@@ -475,11 +480,12 @@ int main(){
 			printf("%d) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
 		}
 		b.print();
-		printf("Please select move(0-%d)\n", m->size()-1);
+		printf("Please select move(0-%ld)\n", m->size()-1);
 		string a = "";
 		cin >> a;
-		if(a == "q")break;
-		if(a == "b"){
+		if(a == "q"){
+			quit = true;
+		}else if(a == "b"){
 			const auto t1 = chrono::high_resolution_clock::now();
 			Board::Move* best = get<Board::Move*>(minimax(b, minimax_depth, -1000, 1000, side));
 			const auto t2 = chrono::high_resolution_clock::now();
@@ -500,7 +506,7 @@ int main(){
 		b.print();
 		side = !side;
 		for(const Board::Move& move : *m){
-			if(move.seq!=NULL)delete[] move.seq;
+			if(move.seq!=NULL)delete[] move.seq;//seq.seq lost
 		}
 		delete m;
 	}
