@@ -229,37 +229,47 @@ public:
 		}
 	}
 
-	Move* gen_jump_q(int pos, int dir,vector<int> seq){
+	std::vector<Move> gen_jump_q(int pos, int dir, vector<int> seq = vector<int>()){
 		int diff = delta_dir(dir);
-		Move* m = new Move[size-2]();
+		//Move* m = new Move[size-2]();
+		std::vector<Move> m = std::vector<Move>();
+		std::vector<Move> mS = std::vector<Move>();
 		int k = 0;
 		for(int i = 1; i < size; i++){
 			if(t[pos + diff * i] != EMPTY && t[pos + diff * i] != COUNT && find(seq.begin(), seq.end(), (pos+diff*i)) == seq.end()){
-				for(int j = 0; j < size - 2; j++){
-					m[j] = Move(pos, pos + diff * i, 0, false, NULL);
-				}
+				Move x = Move(pos, pos + diff * i, 0, false);
 				for(++i; i < size; i++){
 					if(t[pos + diff * i] == EMPTY && bounds(pos, diff, i)){
-						m[k].dst = pos + diff * i;
-						m[k].jump = true;
+						x.dst = pos + diff * i;
+						x.jump = true;
+						m.push_back(x);
 						for(int dir2 = 0; dir2 < 4; dir2++){
 							if(dir2!=((dir+2)%4) && can_jump_q((bool)(t[pos]-QBLACK), pos+diff*i, dir2)){
-								seq.push_back(m[k].over);
-								Move* x = gen_jump_q(pos+diff*i, dir2,seq);//stack overflow
-								if(x != NULL){
-									m[k].seq = x;
+								seq.push_back(x.over);
+								std::vector<Move> s = gen_jump_q(pos+diff*i, dir2,seq);
+								if(!s.empty()){
+									for(auto& s1 : s){
+										x.seq=new Move(s1);
+										mS.push_back(x);
+									}
 								}
 							}
 						}
 						k++;
 					} else{
-						return m;
+						if(mS.empty())
+							return m;
+						else
+							return mS;
 					}
 				}
-				return m;
+				if(mS.empty())
+					return m;
+				else
+					return mS;
 			}
 		}
-		return NULL;//reachable if infinite sequence of queen jumps
+		return vector<Move>();//reachable if infinite sequence of queen jumps
 	}
 
 	vector<Move>* generate_jumps(bool side, int type){
@@ -268,19 +278,23 @@ public:
 		vector<Move>* movesQ = new vector<Move>();
 		vector<Move>* movesS = new vector<Move>();
 		for(int i = 0; i < size * size; i++){
-			Move* x;
+//			Move* x;
 			switch (t[i]){
 			case QBLACK:
 				if(!side){
 					for(int dir = 0; dir < 4; dir++){
 						if(can_jump_q(side, i, dir)){
+							for(auto& s : gen_jump_q(i, dir)){
+								movesQ->push_back(s);
+							}
+							/*
 							x = gen_jump_q(i, dir, vector<int>());
 							if(x != NULL){
 								for(int j = 0; j < size - 2; j++){
 									if(x[j].jump) movesQ->push_back(x[j]);
 								}
 								delete[] x;
-							}
+							}*/
 						}
 					}
 				}
@@ -289,13 +303,16 @@ public:
 				if(side){
 					for(int dir = 0; dir < 4; dir++){
 						if(can_jump_q(side, i, dir)){
-							x = gen_jump_q(i, dir,vector<int>());
+							for(auto& s : gen_jump_q(i, dir)){
+								movesQ->push_back(s);
+							}
+							/*x = gen_jump_q(i, dir,vector<int>());
 							if(x != NULL){
 								for(int j = 0; j < size - 2; j++){
 									if(x[j].jump) movesQ->push_back(x[j]);
 								}
 								delete[] x;
-							}
+							}*/
 						}
 					}
 				}
