@@ -59,8 +59,32 @@ public:
 		uint8_t over;
 		uint8_t dst;
 		Move* seq;
+		~Move(){
+			if(seq!=NULL)
+			delete seq;
+		}
+		Move(const Move& other):jump(other.jump),pos(other.pos),over(other.over),dst(other.dst){
+			if(other.seq!=NULL)
+				seq = new Move(*other.seq);
+			else seq=NULL;
+		}
+		Move(Move&& other):jump(other.jump),pos(other.pos),over(other.over),dst(other.dst){
+			if(other.seq!=NULL)
+				seq = new Move(*other.seq);
+			else seq=NULL;
+		}
+		Move& operator=(const Move& other){
+			jump = other.jump;
+			pos = other.pos;
+			over = other.over;
+			dst = other.dst;
+			if(other.seq!=NULL)
+				seq = new Move(*other.seq);
+			else seq=NULL;
+			return *this;
+		}
 		Move() :jump(true), pos(0), over(0), dst(0), seq(NULL){}
-		Move(uint8_t pos, uint8_t over, uint8_t dst, bool jump, Move* seq):jump(jump), dst(dst), over(over), pos(pos), seq(seq){}
+		Move(uint8_t pos, uint8_t over, uint8_t dst, bool jump, Move* seq = NULL):jump(jump), pos(pos), over(over), dst(dst), seq(seq){}
 		void print(){
 			cout << "m[" << (pos % 8)+1 << ", " << (pos / 8)+1 << "]to[" << (dst % 8)+1 << ", " << (dst / 8)+1 << "]\n";
 		}
@@ -129,11 +153,11 @@ public:
 
 	inline bool can_jump_s(bool side, int pos){
 		if(!side){//black
-			return can_move(pos, 0, 1) && (t[pos + delta_dir(0)] == WHITE || t[pos + delta_dir(0)] == QWHITE)
-				|| can_move(pos, 1, 1) && (t[pos + delta_dir(1)] == WHITE || t[pos + delta_dir(1)] == QWHITE);
+			return (can_move(pos, 0, 1) && (t[pos + delta_dir(0)] == WHITE || t[pos + delta_dir(0)] == QWHITE))
+				|| (can_move(pos, 1, 1) && (t[pos + delta_dir(1)] == WHITE || t[pos + delta_dir(1)] == QWHITE));
 		} else{//white
-			return can_move(pos, 2, 1) && (t[pos + delta_dir(2)] == BLACK || t[pos + delta_dir(2)] == QBLACK)
-				|| can_move(pos, 3, 1) && (t[pos + delta_dir(3)] == BLACK || t[pos + delta_dir(3)] == QBLACK);
+			return (can_move(pos, 2, 1) && (t[pos + delta_dir(2)] == BLACK || t[pos + delta_dir(2)] == QBLACK))
+				|| (can_move(pos, 3, 1) && (t[pos + delta_dir(3)] == BLACK || t[pos + delta_dir(3)] == QBLACK));
 		}
 	}
 	inline bool can_jump_q(bool side, int pos){
@@ -168,32 +192,40 @@ public:
 		return 0;
 	}
 
-	Move* gen_jump_s(int pos, int dir){
+	std::vector<Move> gen_jump_s(int pos, int dir){
 		if(can_move(pos, dir, 1)){
 			int nside = dir <= 1;
 			int diff = delta_dir(dir);
-			if(t[pos + diff] != (tile) (BLACK + nside) && t[pos + diff] != (tile) (QBLACK + nside))return NULL;
-			Move* x = new Move(pos,pos+diff,pos+diff*2,true,NULL);
-			Move* seq0 = gen_jump_s(pos + diff * 2, nside?0:2);
-			Move* seq1 = gen_jump_s(pos + diff * 2, nside?1:3);
-			if(seq0 != NULL && seq1 != NULL){
-				x->seq = new Move[3]();
-				x->seq[0] = *seq0;
-				delete seq0;
-				x->seq[1] = *seq1;
-				delete seq1;
-			}else if(seq0 != NULL){
-				x->seq = new Move[2]();
-				x->seq[0] = *seq0;
-				delete seq0;
-			}else if(seq1 != NULL){
-				x->seq = new Move[2]();
-				x->seq[0] = *seq1;
-				delete seq1;
+			if(t[pos + diff] != (tile) (BLACK + nside) && t[pos + diff] != (tile) (QBLACK + nside))return vector<Move>();
+			Move x = Move(pos,pos+diff,pos+diff*2,true);
+			vector<Move> seq0 = gen_jump_s(pos + diff * 2, nside?0:2);
+			vector<Move> seq1 = gen_jump_s(pos + diff * 2, nside?1:3);
+			vector<Move> out = vector<Move>();
+			if(!seq0.empty() && !seq1.empty()){
+				for(auto& s : seq0){
+					x.seq=new Move(s);
+					out.push_back(x);
+				}
+				for(auto& s : seq1){
+					x.seq=new Move(s);
+					out.push_back(x);
+				}
+			}else if(!seq0.empty()){
+				for(auto& s : seq0){
+					x.seq=new Move(s);
+					out.push_back(x);
+				}
+			}else if(!seq1.empty()){
+				for(auto& s : seq1){
+					x.seq=new Move(s);
+					out.push_back(x);
+				}
+			}else{
+				out.push_back(x);
 			}
-			return x;
+			return out;
 		}else{
-			return NULL;
+			return vector<Move>();
 		}
 	}
 
@@ -271,36 +303,48 @@ public:
 			case BLACK:
 				if(!side && type != 2){
 					if(t[i + delta_dir(0)] == WHITE || t[i + delta_dir(0)] == QWHITE){
-						x = gen_jump_s(i, 0);
+						for(auto& s : gen_jump_s(i, 0)){
+							movesS->push_back(s);
+						}
+						/*x = gen_jump_s(i, 0);
 						if(x != NULL){
 							movesS->push_back(*x);
 							delete x;
-						}
+						}*/
 					}
 					if(t[i + delta_dir(1)] == WHITE || t[i + delta_dir(1)] == QWHITE){
-						x = gen_jump_s(i, 1);
+						for(auto& s : gen_jump_s(i, 1)){
+							movesS->push_back(s);
+						}
+/*						x = gen_jump_s(i, 1);
 						if(x != NULL){
 							movesS->push_back(*x);
 							delete x;
-						}
+						}*/
 					}
 				}
 				break;
 			case WHITE:
 				if(side && type != 2){
 					if(t[i + delta_dir(2)] == BLACK || t[i + delta_dir(2)] == QBLACK){
-						x = gen_jump_s(i, 2);
+						for(auto& s : gen_jump_s(i, 2)){
+							movesS->push_back(s);
+						}
+/*						x = gen_jump_s(i, 2);
 						if(x != NULL){
 							movesS->push_back(*x);
 							delete x;
-						}
+						}*/
 					}
 					if(t[i + delta_dir(3)] == BLACK || t[i + delta_dir(3)] == QBLACK){
-						x = gen_jump_s(i, 3);
+						for(auto& s : gen_jump_s(i, 3)){
+							movesS->push_back(s);
+						}
+/*						x = gen_jump_s(i, 3);
 						if(x != NULL){
 							movesS->push_back(*x);
 							delete x;
-						}
+						}*/
 					}
 				}
 				break;
@@ -326,7 +370,7 @@ public:
 				for(int dir = 0; dir < 4; dir++){
 					for(int j = 1; j < size; j++){
 						int diff = delta_dir(dir);
-						if(j == 1 && t[i + diff] == EMPTY && bounds(i,diff,1) || j != 1 && can_move(i, dir, max(2, j))){
+						if((j == 1 && t[i + diff] == EMPTY && bounds(i,diff,1)) || (j != 1 && can_move(i, dir, max(2, j)))){
 							moves->push_back(Move(i, 0, i + diff * j, false, NULL));
 						} else{
 							break;
@@ -475,9 +519,9 @@ int main(){
 	while(!quit){
 		vector<Board::Move>* m = b.generate_moves(side);
 
-		for(int i = 0; i < m->size();i++){
+		for(size_t i = 0; i < m->size();i++){
 			Board::Move& move = m->at(i);
-			printf("%d) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+			printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
 		}
 		b.print();
 		printf("Please select move(0-%ld)\n", m->size()-1);
@@ -505,9 +549,9 @@ int main(){
 		//shuffle(m->begin(),m->end(),g);
 		b.print();
 		side = !side;
-		for(const Board::Move& move : *m){
+		/*for(const Board::Move& move : *m){
 			if(move.seq!=NULL)delete[] move.seq;//seq.seq lost
-		}
+		}*/
 		delete m;
 	}
 }
