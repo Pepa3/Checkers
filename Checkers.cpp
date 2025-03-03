@@ -88,7 +88,7 @@ public:
 	State t = State();
 	Board(){
 		for(int i = 0; i < 8*2; i++){
-			if((i+i/8) % 2 == 0){
+			if((i+i/8) % 2 == 1){
 				t[i] = WHITE;
 				t[8 * 8 - i - 1] = BLACK;
 			}
@@ -225,8 +225,9 @@ public:
 		std::vector<Move> m = std::vector<Move>();
 		std::vector<Move> mS = std::vector<Move>();
 		int k = 0;
+		bool side = (bool)(t[pos] - QBLACK);
 		for(int i = 1; i < 8; i++){
-			if(t[pos + diff * i] != EMPTY && t[pos + diff * i] != COUNT && find(seq.begin(), seq.end(), (pos+diff*i)) == seq.end()){
+			if((t[pos + diff * i] == (tile)(BLACK+!side) || t[pos + diff * i] == (tile) (QBLACK + !side))&& t[pos + diff * i] != COUNT && find(seq.begin(), seq.end(), (pos+diff*i)) == seq.end()){
 				Move x = Move(pos, pos + diff * i, 0, false);
 				for(++i; i < 8; i++){
 					if(t[pos + diff * i] == EMPTY && bounds(pos, diff, i)){
@@ -377,6 +378,7 @@ public:
 		}else{
 			const Move* next = move;
 			while(true){
+				//cout << "move" << pretty_pos(next->pos) << ">" << pretty_pos(next->dst) << "\n";
 				if(t[next->dst] != EMPTY){
 					cout << "! move->dst != EMPTY" << pretty_pos(next->pos)<< ">" << pretty_pos(next->dst) << endl;
 					return false;
@@ -426,7 +428,10 @@ public:
 				break;
 			}
 		}
-		return (sb-sw)/(sb+sw);
+		int m = 1;
+		if(sb == 1)return m*1000;
+		if(sw == 1)return m* -1000;
+		return m*(sb-sw)/(sb+sw);
 	}
 };
 
@@ -513,7 +518,7 @@ int main(){
 			cout << "Took " << t.count()/1000000 << "ms" << endl;
 			best.print();
 			b.make_move(&best);
-			best.~Move();
+			//best.~Move();
 		}else{
 			int s = std::stoi(a);
 			b.make_move(&m->at(s));
