@@ -6,9 +6,15 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <SFML/Graphics.hpp>
 
 using namespace std;
 constexpr int minimax_depth = 2*3+1;
+const sf::Color black = sf::Color(0x333333ff);
+const sf::Color white = sf::Color(0xbbbbbbff);
+const sf::Color gray = sf::Color(0x777777ff);
+const sf::Color brown = sf::Color(0x964b00ff);
+
 class Board{
 public:
 	enum tile : uint8_t{ EMPTY = 0, BLACK, WHITE, QBLACK, QWHITE, COUNT };
@@ -436,7 +442,7 @@ public:
 };
 
 std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, double beta, bool side){
-	if(depth == .0)return b.eval();
+	if(depth == 0)return b.eval();
 	Board::Move best;
 	if(!side){
 		double maxEval = -1000.0;
@@ -494,37 +500,141 @@ std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, doubl
 }
 
 int main(){
+	sf::Font font;
+	if(!font.loadFromFile("font.ttf")){
+		std::cerr << "Could not load font 'font.ttf'" << std::endl;
+		exit(-2);
+	}
+	sf::RenderWindow window(sf::VideoMode(800, 800), "Checkers");
+	window.setFramerateLimit(30);
+	sf::RectangleShape rect = sf::RectangleShape(sf::Vector2f(100, 100));
+	rect.setOutlineThickness(6);
+	rect.setOutlineColor(gray);
+	sf::CircleShape cir = sf::CircleShape(35);
+	vector<Board::Move>* m = NULL;
+	vector<Board::Move> m1 = vector<Board::Move>();
+	vector<Board::Move> hist = vector<Board::Move>();
+	bool selected = false;
+	int seqDepth = 0;
 	Board b = Board();
 	bool side = false;
-	bool quit = false;
-	while(!quit){
-		vector<Board::Move>* m = b.generate_moves(side);
+	m = b.generate_moves(side);
 
-		for(size_t i = 0; i < m->size();i++){
-			Board::Move& move = m->at(i);
-			printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+	for(size_t i = 0; i < m->size(); i++){
+		Board::Move& move = m->at(i);
+		printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+	}
+	m1 = *m;
+	b.print();
+	while(window.isOpen()){
+		sf::Event event;
+		while(window.pollEvent(event)){
+			if(event.type == sf::Event::Closed){
+				window.close();
+			} else if(event.type == sf::Event::KeyPressed){
+				char key = event.key.code;
+				if(key == sf::Keyboard::Escape){
+					for(size_t i = 0; i < hist.size(); i++){
+						Board::Move& move = hist.at(i);
+						printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+						while(move.seq != NULL){
+							move = *move.seq;
+							cout << "to " << b.pretty_pos(move.dst) << endl;
+						}
+					}
+					exit(0);
+				} else if(key == sf::Keyboard::B){
+					const auto t1 = chrono::high_resolution_clock::now();
+					Board::Move best = get<Board::Move>(minimax(b, minimax_depth, -1000, 1000, side));
+					const auto t2 = chrono::high_resolution_clock::now();
+					std::chrono::duration t = t2 - t1;
+					cout << "Took " << t.count() / 1000000 << "ms" << endl;
+					best.print();
+					b.make_move(&best);
+					hist.push_back(best);
+					side = !side;
+					delete m;
+					m = b.generate_moves(side);
+					m1 = *m;
+					for(size_t i = 0; i < m->size(); i++){
+						Board::Move& move = m->at(i);
+						printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+					}
+
+					b.print();
+					selected = false;
+				}
+			} else if(event.type == sf::Event::MouseButtonReleased){
+				sf::Vector2f pos = sf::Vector2f(event.mouseButton.x,event.mouseButton.y);
+				if(m == NULL){
+					m = b.generate_moves(side);
+					m1 = *m;
+				}
+				if(event.mouseButton.button == sf::Mouse::Left){
+					int x = pos.x / 100;
+					int y = pos.y / 100;
+					if(!selected){
+						erase_if(m1, [=](const Board::Move& c){return c.pos!=x+y*8; });
+						for(size_t i = 0; i < m1.size(); i++){
+							Board::Move& move = m1.at(i);
+							printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+						}
+						selected = true;
+						seqDepth = 0;
+					}else{
+						erase_if(m1, [=](const Board::Move& c){
+							if(seqDepth==0)	return c.dst != x + y * 8; 
+							else{
+								const Board::Move* move = &c;
+								for(int i = 0; i < seqDepth; i++){
+									move = move->seq;
+								}
+								return move->dst == x + y * 8;
+							}
+						});
+						seqDepth++;
+					}
+					if(m1.size() == 1){
+						b.make_move(&m1.at(0));
+						hist.push_back(m1.at(0));
+						side = !side;
+						delete m;
+						m = NULL;
+						m1.clear();
+						seqDepth = 0;
+					}
+				} else if(event.mouseButton.button==sf::Mouse::Right){
+					m1 = *m;
+					selected = false;
+					seqDepth = 0;
+				}
+			}
 		}
-		b.print();
-		printf("Please select move(0-%ld)\n", m->size()-1);
-		string a = "";
-		cin >> a;
-		if(a == "q"){
-			quit = true;
-		}else if(a == "b"){
-			const auto t1 = chrono::high_resolution_clock::now();
-			Board::Move best = get<Board::Move>(minimax(b, minimax_depth, -1000, 1000, side));
-			const auto t2 = chrono::high_resolution_clock::now();
-			std::chrono::duration t = t2 - t1;
-			cout << "Took " << t.count()/1000000 << "ms" << endl;
-			best.print();
-			b.make_move(&best);
-			//best.~Move();
-		}else{
-			int s = std::stoi(a);
-			b.make_move(&m->at(s));
+		
+		window.clear(black);
+		for(int i = 0; i < 64; i++){
+			rect.setPosition(100 * (i % 8), 100 * (i / 8));//switch x, y
+			rect.setFillColor((i % 8 + i / 8) % 2 == 0 ? sf::Color(white) : sf::Color(black));
+			if(!selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.pos == i; }) != m1.end()){
+				rect.setFillColor(sf::Color::Green);
+			} else if(selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.dst == i; }) != m1.end()){
+				rect.setFillColor(sf::Color::Green);
+			}
+			window.draw(rect); Board::tile t = b.t[i];
+			if(t != Board::tile::EMPTY){
+				bool pside = (t - Board::BLACK) < 2 ? (bool) (t - Board::BLACK) : (bool) (t - Board::QBLACK);
+				cir.setPosition(100 * (i % 8) + 50 - 35 - 3, 100 * (i / 8) + 50 - 35 - 3);
+				cir.setFillColor(pside ? sf::Color::White : brown);
+				window.draw(cir);
+				if(t >= Board::QBLACK){
+					cir.setRadius(15);
+					cir.setPosition(100 * (i % 8) + 50 - 3 - 15, 100 * (i / 8) + 50 - 3 - 15);
+					cir.setFillColor(sf::Color::Yellow);
+					window.draw(cir);
+					cir.setRadius(35);
+				}
+			}
 		}
-		b.print();
-		side = !side;
-		delete m;
+		window.display();
 	}
 }
