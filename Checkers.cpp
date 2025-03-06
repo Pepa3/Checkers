@@ -9,7 +9,7 @@
 #include <SFML/Graphics.hpp>
 
 using namespace std;
-constexpr int minimax_depth = 2*3+1;
+constexpr int minimax_depth = 2*6+1;
 const sf::Color black = sf::Color(0x333333ff);
 const sf::Color white = sf::Color(0xbbbbbbff);
 const sf::Color gray = sf::Color(0x777777ff);
@@ -435,8 +435,8 @@ public:
 			}
 		}
 		int m = 1;
-		if(sb == 1)return m*1000;
-		if(sw == 1)return m* -1000;
+		if(sb == 1)return m*-1000;
+		if(sw == 1)return m*1000;
 		return m*(sb-sw)/(sb+sw);
 	}
 };
@@ -459,7 +459,7 @@ std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, doubl
 			}
 			maxEval = max(maxEval, e);
 			alpha = max(alpha, e);
-			//if(beta <= alpha)break;
+			if(beta <= alpha)break;
 			if(depth == minimax_depth && e >= maxEval){
 				best = m1;
 			}
@@ -485,7 +485,7 @@ std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, doubl
 			}
 			minEval = min(minEval, e);
 			beta = min(beta, e);
-			//if(beta <= alpha)break;//doesnt free moves
+			if(beta <= alpha)break;//doesnt free moves
 			if(depth == minimax_depth && e <= minEval){
 				best = m1;
 			}
