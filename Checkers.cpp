@@ -9,7 +9,7 @@
 #include <SFML/Graphics.hpp>
 
 using namespace std;
-constexpr int minimax_depth = 2*6+1;
+constexpr int minimax_depth = 2*3+1;
 const sf::Color black = sf::Color(0x333333ff);
 const sf::Color white = sf::Color(0xbbbbbbff);
 const sf::Color gray = sf::Color(0x777777ff);
@@ -419,16 +419,16 @@ public:
 		for(int i = 0; i < 8*8; i++){
 			switch(t[i]){
 			case BLACK:
-				sb += 1+i/8;
+				sb += 10+i/8;
 				break;
 			case WHITE:
-				sw += 1+(8-i/8-1);
+				sw += 10+(8-i/8-1);
 				break;
 			case QBLACK:
-				sb += 10.0;
+				sb += 100.0;
 				break;
 			case QWHITE:
-				sw += 10.0;
+				sw += 100.0;
 				break;
 			default:
 				break;
@@ -459,7 +459,7 @@ std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, doubl
 			}
 			maxEval = max(maxEval, e);
 			alpha = max(alpha, e);
-			if(beta <= alpha)break;
+			//if(beta <= alpha)break;
 			if(depth == minimax_depth && e >= maxEval){
 				best = m1;
 			}
@@ -485,7 +485,7 @@ std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, doubl
 			}
 			minEval = min(minEval, e);
 			beta = min(beta, e);
-			if(beta <= alpha)break;//doesnt free moves
+			//if(beta <= alpha)break;//doesnt free moves
 			if(depth == minimax_depth && e <= minEval){
 				best = m1;
 			}
@@ -613,7 +613,7 @@ int main(){
 		
 		window.clear(black);
 		for(int i = 0; i < 64; i++){
-			rect.setPosition(100 * (i % 8), 100 * (i / 8));//switch x, y
+			rect.setPosition(100 * (i % 8), 100 * (i / 8));
 			rect.setFillColor((i % 8 + i / 8) % 2 == 0 ? sf::Color(white) : sf::Color(black));
 			if(!selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.pos == i; }) != m1.end()){
 				rect.setFillColor(sf::Color::Green);
