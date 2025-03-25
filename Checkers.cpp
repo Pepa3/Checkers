@@ -6,14 +6,15 @@
 #include <random>
 #include <string>
 #include <vector>
-#include <SFML/Graphics.hpp>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 using namespace std;
 constexpr int minimax_depth = 2*3+1;
-const sf::Color black = sf::Color(0x333333ff);
-const sf::Color white = sf::Color(0xbbbbbbff);
-const sf::Color gray = sf::Color(0x777777ff);
-const sf::Color brown = sf::Color(0x964b00ff);
+const SDL_Color black = SDL_Color(0x33,0x33,0x33,0xff);
+const SDL_Color white = SDL_Color(0xbb,0xbb,0xbb,0xff);
+const SDL_Color gray =  SDL_Color(0x77,0x77,0x77,0xff);
+const SDL_Color brown = SDL_Color(0x96,0x4b,0x00,0xff);
 
 class Board{
 public:
@@ -499,18 +500,37 @@ std::variant<double,Board::Move> minimax(Board b, int depth, double alpha, doubl
 	}
 }
 
-int main(){
-	sf::Font font;
-	if(!font.loadFromFile("font.ttf")){
-		std::cerr << "Could not load font 'font.ttf'" << std::endl;
-		exit(-2);
+void draw_circle(SDL_Renderer* renderer, int x, int y, int radius, SDL_Color color){
+	SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+	for(int w = 0; w < radius * 2; w++){
+		for(int h = 0; h < radius * 2; h++){
+			int dx = radius - w; // horizontal offset
+			int dy = radius - h; // vertical offset
+			if((dx * dx + dy * dy) <= (radius * radius)){
+				SDL_RenderPoint(renderer, x + dx, y + dy);
+			}
+		}
 	}
-	sf::RenderWindow window(sf::VideoMode(800, 800), "Checkers");
-	window.setFramerateLimit(30);
-	sf::RectangleShape rect = sf::RectangleShape(sf::Vector2f(100, 100));
-	rect.setOutlineThickness(6);
-	rect.setOutlineColor(gray);
-	sf::CircleShape cir = sf::CircleShape(35);
+}
+
+int main(int argc, char** argv){
+	//TODO:convert into main callbacks
+	if(!SDL_SetAppMetadata("Checkers", "1.0", "me.pepa3.checkers")){
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "metadata: %s", SDL_GetError());
+	}
+	SDL_Window* window;
+	SDL_Renderer* render;
+	bool done = false;
+	if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_CAMERA)){
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL context: %s", SDL_GetError());
+		return 1;
+	}
+	if(!SDL_CreateWindowAndRenderer("Checkers", 800, 800, 0, &window, &render)){
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR,"Couldn't create window/renderer: %s", SDL_GetError());
+		return 1;
+	}
+	SDL_SetRenderVSync(render, SDL_RENDERER_VSYNC_ADAPTIVE);
+	SDL_FRect rect = {0,0,100,100};
 	vector<Board::Move>* m = NULL;
 	vector<Board::Move> m1 = vector<Board::Move>();
 	vector<Board::Move> hist = vector<Board::Move>();
@@ -526,14 +546,14 @@ int main(){
 	}
 	m1 = *m;
 	b.print();
-	while(window.isOpen()){
-		sf::Event event;
-		while(window.pollEvent(event)){
-			if(event.type == sf::Event::Closed){
-				window.close();
-			} else if(event.type == sf::Event::KeyPressed){
-				char key = event.key.code;
-				if(key == sf::Keyboard::Escape){
+	while(!done){
+		SDL_Event event;
+		while(SDL_PollEvent(&event)){
+			if(event.type == SDL_EVENT_QUIT){
+				done = true;
+			} else if(event.type == SDL_EVENT_KEY_DOWN){
+				char key = event.key.key;
+				if(key == SDLK_ESCAPE){
 					for(size_t i = 0; i < hist.size(); i++){
 						Board::Move& move = hist.at(i);
 						printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
@@ -543,7 +563,7 @@ int main(){
 						}
 					}
 					exit(0);
-				} else if(key == sf::Keyboard::B){
+				} else if(key == SDLK_B){
 					const auto t1 = chrono::high_resolution_clock::now();
 					Board::Move best = get<Board::Move>(minimax(b, minimax_depth, -1000, 1000, side));
 					const auto t2 = chrono::high_resolution_clock::now();
@@ -564,15 +584,14 @@ int main(){
 					b.print();
 					selected = false;
 				}
-			} else if(event.type == sf::Event::MouseButtonReleased){
-				sf::Vector2f pos = sf::Vector2f(event.mouseButton.x,event.mouseButton.y);
+			} else if(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
 				if(m == NULL){
 					m = b.generate_moves(side);
 					m1 = *m;
 				}
-				if(event.mouseButton.button == sf::Mouse::Left){
-					int x = pos.x / 100;
-					int y = pos.y / 100;
+				if(event.button.button == SDL_BUTTON_LEFT){
+					int x = event.button.x / 100;
+					int y = event.button.y / 100;
 					if(!selected){
 						erase_if(m1, [=](const Board::Move& c){return c.pos!=x+y*8; });
 						for(size_t i = 0; i < m1.size(); i++){
@@ -603,38 +622,38 @@ int main(){
 						m1.clear();
 						seqDepth = 0;
 					}
-				} else if(event.mouseButton.button==sf::Mouse::Right){
+				} else if(event.button.button==SDL_BUTTON_RIGHT){
 					m1 = *m;
 					selected = false;
 					seqDepth = 0;
 				}
 			}
 		}
-		
-		window.clear(black);
+		SDL_SetRenderDrawColor(render, gray.r, gray.g, gray.b, gray.a);
+		SDL_RenderClear(render);
 		for(int i = 0; i < 64; i++){
-			rect.setPosition(100 * (i % 8), 100 * (i / 8));
-			rect.setFillColor((i % 8 + i / 8) % 2 == 0 ? sf::Color(white) : sf::Color(black));
+			rect.x = 100 * (i % 8);
+			rect.y = 100 * (i / 8);
+			SDL_Color x = ((i % 8 + i / 8) % 2 == 0 ? white : black);
+			SDL_SetRenderDrawColor(render, x.r, x.g, x.b, x.a);
 			if(!selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.pos == i; }) != m1.end()){
-				rect.setFillColor(sf::Color::Green);
+				SDL_SetRenderDrawColor(render, 0, 0xff, 0, 0xff);//green
 			} else if(selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.dst == i; }) != m1.end()){
-				rect.setFillColor(sf::Color::Green);
+				SDL_SetRenderDrawColor(render, 0, 0xff, 0, 0xff);//green
 			}
-			window.draw(rect); Board::tile t = b.t[i];
+			SDL_RenderFillRect(render, &rect);
+			Board::tile t = b.t[i];
 			if(t != Board::tile::EMPTY){
 				bool pside = (t - Board::BLACK) < 2 ? (bool) (t - Board::BLACK) : (bool) (t - Board::QBLACK);
-				cir.setPosition(100 * (i % 8) + 50 - 35 - 3, 100 * (i / 8) + 50 - 35 - 3);
-				cir.setFillColor(pside ? sf::Color::White : brown);
-				window.draw(cir);
+				draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 35, pside ? SDL_Color(0xff,0xff,0xff,0xff) : brown);
 				if(t >= Board::QBLACK){
-					cir.setRadius(15);
-					cir.setPosition(100 * (i % 8) + 50 - 3 - 15, 100 * (i / 8) + 50 - 3 - 15);
-					cir.setFillColor(sf::Color::Yellow);
-					window.draw(cir);
-					cir.setRadius(35);
+					draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 15, SDL_Color(0xff,0xff,0x00,0xff));
 				}
 			}
 		}
-		window.display();
+		SDL_RenderPresent(render);
 	}
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+	return 0;
 }
