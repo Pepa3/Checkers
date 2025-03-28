@@ -11,10 +11,10 @@
 
 using namespace std;
 constexpr int minimax_depth = 2*3+1;
-const SDL_Color black = SDL_Color(0x33,0x33,0x33,0xff);
-const SDL_Color white = SDL_Color(0xbb,0xbb,0xbb,0xff);
-const SDL_Color gray =  SDL_Color(0x77,0x77,0x77,0xff);
-const SDL_Color brown = SDL_Color(0x96,0x4b,0x00,0xff);
+const SDL_Color black = SDL_Color{0x33,0x33,0x33,0xff};
+const SDL_Color white = SDL_Color{0xbb,0xbb,0xbb,0xff};
+const SDL_Color gray =  SDL_Color{0x77,0x77,0x77,0xff};
+const SDL_Color brown = SDL_Color{0x96,0x4b,0x00,0xff};
 
 class Board{
 public:
@@ -645,9 +645,9 @@ int main(int argc, char** argv){
 			Board::tile t = b.t[i];
 			if(t != Board::tile::EMPTY){
 				bool pside = (t - Board::BLACK) < 2 ? (bool) (t - Board::BLACK) : (bool) (t - Board::QBLACK);
-				draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 35, pside ? SDL_Color(0xff,0xff,0xff,0xff) : brown);
+				draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 35, pside ? SDL_Color{0xff,0xff,0xff,0xff} : brown);
 				if(t >= Board::QBLACK){
-					draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 15, SDL_Color(0xff,0xff,0x00,0xff));
+					draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 15, SDL_Color{0xff,0xff,0x00,0xff});
 				}
 			}
 		}
