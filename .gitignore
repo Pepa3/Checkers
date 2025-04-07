@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 Checkers
 main
+main.exe
+*.dll
+pic
