@@ -32,27 +32,23 @@ int main(int argc, char** argv){
 		cout << "Provide pictures" << endl;
 		return -1;
 	}
-//	cv::VideoCapture cap = cv::VideoCapture(ci,cv::CAP_ANY);
-//	if(!cap.isOpened()){
-//		cout << "Cannot open the camera!" << endl;
-//		return 1;
-//	}
 	cv::namedWindow("original");
 	cv::setMouseCallback("original",mouseCallback);
-	bool quit = false;//, doCapture=false;
-//	chrono::nanoseconds time = chrono::high_resolution_clock::now().time_since_epoch();
+	bool quit = false;
 	vector<cv::String> fn;
 	cv::glob(argv[1], fn, false);
-	
-	vector<cv::Mat> images;
-	size_t count = fn.size(); //number of png files in images folder
+
+	size_t count = fn.size();
+	vector<cv::Mat> images = vector<cv::Mat>(count);
 	cout << "Found " << count << " images" << endl;
-	for (size_t i=0; i<count; i++)
-	    images.push_back(cv::imread(fn[i]));
+	for(size_t i = 0; i < count; i++)
+		cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);
 	size_t current = 0;
 	cv::Mat mTrans, mProc;
-	cv::Mat Irender, Iorig, Itrans, ItransRend;
+	cv::Mat Irender, Iorig, Itrans, ItransRend, ItransLast, Idiff;
+
 	cv::resize(images[current], Iorig, {width, height});
+	Itrans = Iorig.clone();
 
 	while(!quit){
 		int key;
@@ -66,20 +62,18 @@ int main(int argc, char** argv){
 					break;
 				case 't':
 					mTrans = cv::getPerspectiveTransform(corners,window);
+					ItransLast = Itrans.clone();
 					cv::warpPerspective(Iorig,Itrans,mTrans,{width,height});
-					mProc = h::extract(Itrans);
-					cv::imshow("processed", mProc);
+					cv::absdiff(Itrans, ItransLast, Idiff);
+					mProc = h::extract(Idiff);
 					ItransRend = Itrans.clone();
 					for(int i = 1; i <= 8; i++){
 						cv::line(ItransRend, cv::Point2f(i * (width / 8), 0), cv::Point2f(i * width / 8, height), cv::Scalar(0, 255, 0));
 						cv::line(ItransRend, cv::Point2f(0, i * (height / 8)), cv::Point2f(width, i * (height / 8)), cv::Scalar(0, 255, 0));
 					}
-					cv::imshow("transformed", ItransRend);
-					/*if(!cv::findChessboardCorners(f2, cv::Size(6, 6), chessboard, cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE)){
-						cout << "Couldn't find the chessboard" << endl;
-					}else{
-						cout << "Found the chessboard!" << endl;	
-					}*/
+					//cv::imshow("transformed", ItransRend);
+					cv::imshow("processed", mProc);
+					cv::imshow("difference", Idiff);
 					break;
 				case 'n':
 					current++;
@@ -89,19 +83,8 @@ int main(int argc, char** argv){
 					break;
 			}
 		}
-		//cap.read(frame);
-		//if(frame.empty()){
-		//	cerr << "ERROR! blank frame grabbed" << endl;
-        	//	break;
-		//}
-		//cout << time << endl;
-		//if(chrono::high_resolution_clock::now().time_since_epoch()-time>=1s){
-		//cv::cvtColor(frame,image,cv::COLOR_BGR2GRAY);
-		
-		//time=chrono::high_resolution_clock::now().time_since_epoch();
-		//}
 		Irender = Iorig.clone();
-		h::p4(Irender,cv::Scalar(0,255,0),corners[0],corners[1],corners[2],corners[3]);
+		h::p4(Irender,cv::Scalar(255,255,255),corners[0],corners[1],corners[2],corners[3]);
 		bool first = true;
 		cv::Point2f p2 = cv::Point2f(0,0);
 		for(auto& p : chessboard){
@@ -110,7 +93,7 @@ int main(int argc, char** argv){
 				first=false;
 				continue;
 			}
-			cv::line(Irender,p2,p,cv::Scalar(0,255,0));
+			cv::line(Irender,p2,p,cv::Scalar(255, 255, 255));
 			p2=p;
 		}
 		cv::imshow("original", Irender);

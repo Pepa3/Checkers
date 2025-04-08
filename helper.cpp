@@ -26,7 +26,7 @@ cv::Mat extract(cv::Mat in){
 	for(size_t i = 0; i < 8; i++){
 		uchar* o1 = out.ptr<uchar>(i);
 		for(size_t j = 0; j < 8; j++){
-			uchar mean = cv::mean(cv::Mat(in, cv::Rect(j * (width / 8), i * (height / 8), width / 8, height / 8)))[0];
+			uchar mean = cv::mean(cv::Mat(in, cv::Rect(j * (width / 8)+width/8/4, i * (height / 8)+height/8/4, width / 8/2, height / 8/2)))[0];
 			o1[j] = mean;
 		}
 	}
