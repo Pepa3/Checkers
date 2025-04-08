@@ -89,7 +89,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\vscode\SFML-2.6.1\include;D:\vscode\SDL3-3.2.8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\vscode\SDL3-3.2.8\include;D:\msys2\mingw64\include\opencv4</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -106,7 +106,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\vscode\SDL3-3.2.8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\vscode\SDL3-3.2.8\include;D:\msys2\mingw64\include\opencv4</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,7 +124,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\vscode\SFML-2.6.1\include;D:\vscode\SDL3-3.2.8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\vscode\SDL3-3.2.8\include;D:\msys2\mingw64\include\opencv4</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,7 +141,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\vscode\SDL3-3.2.8\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\vscode\SDL3-3.2.8\include;D:\msys2\mingw64\include\opencv4</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
