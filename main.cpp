@@ -42,7 +42,7 @@ int main(int argc, char** argv){
 	vector<cv::Mat> images = vector<cv::Mat>(count);
 	cout << "Found " << count << " images" << endl;
 	for(size_t i = 0; i < count; i++)
-		cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);
+		cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);//HSV is worse
 	size_t current = 0;
 	cv::Mat mTrans, mProc;
 	cv::Mat Irender, Iorig, Itrans, ItransRend, ItransLast, Idiff;
@@ -71,6 +71,22 @@ int main(int argc, char** argv){
 						cv::line(ItransRend, cv::Point2f(i * (width / 8), 0), cv::Point2f(i * width / 8, height), cv::Scalar(0, 255, 0));
 						cv::line(ItransRend, cv::Point2f(0, i * (height / 8)), cv::Point2f(width, i * (height / 8)), cv::Scalar(0, 255, 0));
 					}
+					/*
+					cv::Mat canny_output;
+					cv::Canny(src_gray, canny_output, thresh, thresh * 2);
+
+					vector<vector<cv::Point> > contours;
+					vector<cv::Vec4i> hierarchy;
+					cv::findContours(canny_output, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+					cv::Mat drawing = cv::Mat::zeros(canny_output.size(), cv::CV_8UC3);
+					for(size_t i = 0; i < contours.size(); i++){
+						cv::Scalar color = cv::Scalar(rng.uniform(0, 256), cv::rng.uniform(0, 256), cv::rng.uniform(0, 256));
+						cv::drawContours(drawing, contours, (int) i, color, 2, cv::LINE_8, hierarchy, 0);
+					}
+
+					imshow("Contours", drawing);
+					*/
 					//cv::imshow("transformed", ItransRend);
 					cv::imshow("processed", mProc);
 					cv::imshow("difference", Idiff);
