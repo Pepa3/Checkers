@@ -45,9 +45,13 @@ int main(int argc, char** argv){
 		cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);//HSV is worse
 	size_t current = 0;
 	cv::Mat mTrans, mProc;
-	cv::Mat Irender, Iorig, Itrans, ItransRend, ItransLast, Idiff;
+	cv::Mat Irender, Iorig, Itrans, ItransRend, IprocLast, Idiff, Iproc, Icontours;
+	cv::Mat canny_output;
+	vector<vector<cv::Point> > contours;
+	vector<cv::Vec4i> hierarchy;
 
 	cv::resize(images[current], Iorig, {width, height});
+	Iproc = cv::Mat::zeros(8, 8, CV_8UC1);
 	Itrans = Iorig.clone();
 
 	while(!quit){
@@ -61,39 +65,40 @@ int main(int argc, char** argv){
 					quit=true;
 					break;
 				case 't':
+					//transform mTrans
 					mTrans = cv::getPerspectiveTransform(corners,window);
-					ItransLast = Itrans.clone();
+					//warp Itrans
 					cv::warpPerspective(Iorig,Itrans,mTrans,{width,height});
-					cv::absdiff(Itrans, ItransLast, Idiff);
-					mProc = h::extract(Idiff);
+					//Canny canny_out
+					cv::Canny(Itrans, canny_output, 50, 200);
+					cv::findContours(canny_output, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+					//contours Icontours
+					Icontours = cv::Mat::zeros(Itrans.size()/*canny_output.size()*/, CV_8UC1);
+					for(size_t i = 0; i < contours.size(); i++){
+						cv::drawContours(Icontours, contours, (int) i, cv::Scalar(255, 255, 255), 2, cv::LINE_8, hierarchy, 0);
+					}
+					//copy last proc
+					IprocLast = Iproc.clone();
+					//processed
+					Iproc = h::extract(Icontours);
+					//diff Idiff
+					cv::absdiff(Iproc, IprocLast, Idiff);
 					ItransRend = Itrans.clone();
 					for(int i = 1; i <= 8; i++){
 						cv::line(ItransRend, cv::Point2f(i * (width / 8), 0), cv::Point2f(i * width / 8, height), cv::Scalar(0, 255, 0));
 						cv::line(ItransRend, cv::Point2f(0, i * (height / 8)), cv::Point2f(width, i * (height / 8)), cv::Scalar(0, 255, 0));
 					}
-					/*
-					cv::Mat canny_output;
-					cv::Canny(src_gray, canny_output, thresh, thresh * 2);
 
-					vector<vector<cv::Point> > contours;
-					vector<cv::Vec4i> hierarchy;
-					cv::findContours(canny_output, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
 
-					cv::Mat drawing = cv::Mat::zeros(canny_output.size(), cv::CV_8UC3);
-					for(size_t i = 0; i < contours.size(); i++){
-						cv::Scalar color = cv::Scalar(rng.uniform(0, 256), cv::rng.uniform(0, 256), cv::rng.uniform(0, 256));
-						cv::drawContours(drawing, contours, (int) i, color, 2, cv::LINE_8, hierarchy, 0);
-					}
+					//cv::imshow("Contours", drawing);
 
-					imshow("Contours", drawing);
-					*/
 					//cv::imshow("transformed", ItransRend);
 					cv::imshow("processed", mProc);
 					cv::imshow("difference", Idiff);
 					break;
 				case 'n':
 					current++;
-					cv::resize(images[current], Iorig, cv::Size(900, 700));
+					cv::resize(images[current], Iorig, cv::Size(width, height));
 					if(current>count)
 						current--;
 					break;

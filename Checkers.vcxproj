@@ -154,6 +154,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Checkers.cpp" />
+    <ClCompile Include="helper.cpp" />
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build-main.sh" />
+    <None Include="build.sh" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

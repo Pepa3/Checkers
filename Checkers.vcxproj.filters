@@ -18,5 +18,15 @@
     <ClCompile Include="Checkers.cpp">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
+    <ClCompile Include="helper.cpp">
+      <Filter>Zdrojové soubory</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Zdrojové soubory</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build-main.sh" />
+    <None Include="build.sh" />
   </ItemGroup>
 </Project>
