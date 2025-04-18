@@ -42,13 +42,16 @@ int main(int argc, char** argv){
 	vector<cv::Mat> images = vector<cv::Mat>(count);
 	cout << "Found " << count << " images" << endl;
 	for(size_t i = 0; i < count; i++)
-		cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);//HSV is worse
+		images[i]=cv::imread(fn[i]);
+		//cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);//HSV is worse
 	size_t current = 0;
 	cv::Mat mTrans;
 	cv::Mat Irender, Iorig, Itrans, ItransRend, IprocLast, Idiff, Iproc, Icontours;
 	cv::Mat canny_output;
 	vector<vector<cv::Point> > contours;
 	vector<cv::Vec4i> hierarchy;
+	cv::Point a = cv::Point(0,0),b = cv::Point(0,1);
+	double c = 0, d = 0;
 
 	cv::resize(images[current], Iorig, {width, height});
 	Iproc = cv::Mat::zeros(8, 8, CV_8UC1);
@@ -70,7 +73,7 @@ int main(int argc, char** argv){
 					//warp Itrans
 					cv::warpPerspective(Iorig,Itrans,mTrans,{width,height});
 					//Canny canny_out
-					cv::Canny(Itrans, canny_output, 50, 200);
+					cv::Canny(Itrans, canny_output, 70, 150);
 					cv::findContours(canny_output, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 					//contours Icontours
 					Icontours = cv::Mat::zeros(canny_output.size(), CV_8UC3);
@@ -91,13 +94,34 @@ int main(int argc, char** argv){
 						cv::line(ItransRend, cv::Point2f(i * (width / 8), 0), cv::Point2f(i * width / 8, height), cv::Scalar(0, 255, 0));
 						cv::line(ItransRend, cv::Point2f(0, i * (height / 8)), cv::Point2f(width, i * (height / 8)), cv::Scalar(0, 255, 0));
 					}
-					//cv::imshow("transformed", ItransRend);
+					c=0;d=0;
+					for(int i = 0;i<64;i++){
+						double x = Idiff.ptr<uchar>(i/8)[i%8];
+						if(x>c){
+							d=c;
+							c=x;
+							b=a;
+							a=cv::Point((i%8)*width/8,(i/8)*height/8+30);
+						}
+						if(x<c&&x>=d){
+							d=x;
+							b=cv::Point((i%8)*width/8,(i/8)*height/8+30);
+						}
+					}
+					cv::putText(ItransRend, "first", a, cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,0,255));
+					cv::putText(ItransRend, "second", b, cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,0,255));
+					cv::imshow("transformed", ItransRend);
 					break;
 				case 'n':
 					current++;
 					cv::resize(images[current], Iorig, cv::Size(width, height));
 					if(current>count)
 						current--;
+					break;
+				case 'b':
+					if(current!=0)
+					current--;
+					cv::resize(images[current], Iorig, cv::Size(width, height));
 					break;
 			}
 		}
