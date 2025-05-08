@@ -6,6 +6,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
@@ -15,6 +16,8 @@ const SDL_Color black = SDL_Color{0x33,0x33,0x33,0xff};
 const SDL_Color white = SDL_Color{0xbb,0xbb,0xbb,0xff};
 const SDL_Color gray =  SDL_Color{0x77,0x77,0x77,0xff};
 const SDL_Color brown = SDL_Color{0x96,0x4b,0x00,0xff};
+SDL_Window* window;
+SDL_Renderer* render;
 
 class Board{
 public:
@@ -513,31 +516,29 @@ void draw_circle(SDL_Renderer* renderer, int x, int y, int radius, SDL_Color col
 	}
 }
 
-int main(int argc, char** argv){
-	//TODO:convert into main callbacks
+Board b;
+SDL_FRect rect = {0,0,100,100};
+vector<Board::Move>* m = NULL;
+vector<Board::Move> m1 = vector<Board::Move>();
+vector<Board::Move> hist = vector<Board::Move>();
+bool selected = false;
+int seqDepth = 0;
+bool side = false;
+
+SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv){
 	if(!SDL_SetAppMetadata("Checkers", "1.0", "me.pepa3.checkers")){
 		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "metadata: %s", SDL_GetError());
 	}
-	SDL_Window* window;
-	SDL_Renderer* render;
-	bool done = false;
 	if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_CAMERA)){
 		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL context: %s", SDL_GetError());
-		return 1;
+		return SDL_APP_FAILURE;
 	}
 	if(!SDL_CreateWindowAndRenderer("Checkers", 800, 800, 0, &window, &render)){
 		SDL_LogError(SDL_LOG_CATEGORY_ERROR,"Couldn't create window/renderer: %s", SDL_GetError());
-		return 1;
+		return SDL_APP_FAILURE;
 	}
 	SDL_SetRenderVSync(render, SDL_RENDERER_VSYNC_ADAPTIVE);
-	SDL_FRect rect = {0,0,100,100};
-	vector<Board::Move>* m = NULL;
-	vector<Board::Move> m1 = vector<Board::Move>();
-	vector<Board::Move> hist = vector<Board::Move>();
-	bool selected = false;
-	int seqDepth = 0;
-	Board b = Board();
-	bool side = false;
+	b = Board();
 	m = b.generate_moves(side);
 
 	for(size_t i = 0; i < m->size(); i++){
@@ -546,114 +547,121 @@ int main(int argc, char** argv){
 	}
 	m1 = *m;
 	b.print();
-	while(!done){
-		SDL_Event event;
-		while(SDL_PollEvent(&event)){
-			if(event.type == SDL_EVENT_QUIT){
-				done = true;
-			} else if(event.type == SDL_EVENT_KEY_DOWN){
-				char key = event.key.key;
-				if(key == SDLK_ESCAPE){
-					for(size_t i = 0; i < hist.size(); i++){
-						Board::Move& move = hist.at(i);
-						printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
-						while(move.seq != NULL){
-							move = *move.seq;
-							cout << "to " << b.pretty_pos(move.dst) << endl;
-						}
-					}
-					exit(0);
-				} else if(key == SDLK_B){
-					const auto t1 = chrono::high_resolution_clock::now();
-					Board::Move best = get<Board::Move>(minimax(b, minimax_depth, -1000, 1000, side));
-					const auto t2 = chrono::high_resolution_clock::now();
-					std::chrono::duration t = t2 - t1;
-					cout << "Took " << t.count() / 1000000 << "ms" << endl;
-					best.print();
-					b.make_move(&best);
-					hist.push_back(best);
-					side = !side;
-					delete m;
-					m = b.generate_moves(side);
-					m1 = *m;
-					for(size_t i = 0; i < m->size(); i++){
-						Board::Move& move = m->at(i);
-						printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
-					}
 
-					b.print();
-					selected = false;
-				}
-			} else if(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN){
-				if(m == NULL){
-					m = b.generate_moves(side);
-					m1 = *m;
-				}
-				if(event.button.button == SDL_BUTTON_LEFT){
-					int x = event.button.x / 100;
-					int y = event.button.y / 100;
-					if(!selected){
-						erase_if(m1, [=](const Board::Move& c){return c.pos!=x+y*8; });
-						for(size_t i = 0; i < m1.size(); i++){
-							Board::Move& move = m1.at(i);
-							printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
-						}
-						selected = true;
-						seqDepth = 0;
-					}else{
-						erase_if(m1, [=](const Board::Move& c){
-							if(seqDepth==0)	return c.dst != x + y * 8; 
-							else{
-								const Board::Move* move = &c;
-								for(int i = 0; i < seqDepth; i++){
-									move = move->seq;
-								}
-								return move->dst == x + y * 8;
-							}
-						});
-						seqDepth++;
-					}
-					if(m1.size() == 1){
-						b.make_move(&m1.at(0));
-						hist.push_back(m1.at(0));
-						side = !side;
-						delete m;
-						m = NULL;
-						m1.clear();
-						seqDepth = 0;
-					}
-				} else if(event.button.button==SDL_BUTTON_RIGHT){
-					m1 = *m;
-					selected = false;
-					seqDepth = 0;
-				}
+
+	return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppIterate(void* appstate){
+	SDL_SetRenderDrawColor(render, gray.r, gray.g, gray.b, gray.a);
+	SDL_RenderClear(render);
+	for(int i = 0; i < 64; i++){
+		rect.x = 100 * (i % 8);
+		rect.y = 100 * (i / 8);
+		SDL_Color x = ((i % 8 + i / 8) % 2 == 0 ? white : black);
+		SDL_SetRenderDrawColor(render, x.r, x.g, x.b, x.a);
+		if(!selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.pos == i; }) != m1.end()){
+			SDL_SetRenderDrawColor(render, 0, 0xff, 0, 0xff);//green
+		} else if(selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.dst == i; }) != m1.end()){
+			SDL_SetRenderDrawColor(render, 0, 0xff, 0, 0xff);//green
+		}
+		SDL_RenderFillRect(render, &rect);
+		Board::tile t = b.t[i];
+		if(t != Board::tile::EMPTY){
+			bool pside = (t - Board::BLACK) < 2 ? (bool) (t - Board::BLACK) : (bool) (t - Board::QBLACK);
+			draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 35, pside ? SDL_Color{0xff,0xff,0xff,0xff} : brown);
+			if(t >= Board::QBLACK){
+				draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 15, SDL_Color{0xff,0xff,0x00,0xff});
 			}
 		}
-		SDL_SetRenderDrawColor(render, gray.r, gray.g, gray.b, gray.a);
-		SDL_RenderClear(render);
-		for(int i = 0; i < 64; i++){
-			rect.x = 100 * (i % 8);
-			rect.y = 100 * (i / 8);
-			SDL_Color x = ((i % 8 + i / 8) % 2 == 0 ? white : black);
-			SDL_SetRenderDrawColor(render, x.r, x.g, x.b, x.a);
-			if(!selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.pos == i; }) != m1.end()){
-				SDL_SetRenderDrawColor(render, 0, 0xff, 0, 0xff);//green
-			} else if(selected && find_if(m1.begin(), m1.end(), [=](const Board::Move& c){return c.dst == i; }) != m1.end()){
-				SDL_SetRenderDrawColor(render, 0, 0xff, 0, 0xff);//green
-			}
-			SDL_RenderFillRect(render, &rect);
-			Board::tile t = b.t[i];
-			if(t != Board::tile::EMPTY){
-				bool pside = (t - Board::BLACK) < 2 ? (bool) (t - Board::BLACK) : (bool) (t - Board::QBLACK);
-				draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 35, pside ? SDL_Color{0xff,0xff,0xff,0xff} : brown);
-				if(t >= Board::QBLACK){
-					draw_circle(render, 100 * (i % 8) + 50, 100 * (i / 8) + 50, 15, SDL_Color{0xff,0xff,0x00,0xff});
-				}
-			}
-		}
-		SDL_RenderPresent(render);
 	}
+	SDL_RenderPresent(render);
+	return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event){
+	if(event->type == SDL_EVENT_QUIT){
+		return SDL_APP_SUCCESS;
+	} else if(event->type == SDL_EVENT_KEY_DOWN){
+		char key = event->key.key;
+		if(key == SDLK_ESCAPE){
+			for(size_t i = 0; i < hist.size(); i++){
+				Board::Move& move = hist.at(i);
+				printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+				while(move.seq != NULL){
+					move = *move.seq;
+					cout << "to " << b.pretty_pos(move.dst) << endl;
+				}
+			}
+			exit(0);
+		} else if(key == SDLK_B){
+			const auto t1 = chrono::high_resolution_clock::now();
+			Board::Move best = get<Board::Move>(minimax(b, minimax_depth, -1000, 1000, side));
+			const auto t2 = chrono::high_resolution_clock::now();
+			std::chrono::duration t = t2 - t1;
+			cout << "Took " << t.count() / 1000000 << "ms" << endl;
+			best.print();
+			b.make_move(&best);
+			hist.push_back(best);
+			side = !side;
+			delete m;
+			m = b.generate_moves(side);
+			m1 = *m;
+			for(size_t i = 0; i < m->size(); i++){
+				Board::Move& move = m->at(i);
+				printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+			}
+				b.print();
+			selected = false;
+		}
+	} else if(event->type == SDL_EVENT_MOUSE_BUTTON_DOWN){
+		if(m == NULL){
+			m = b.generate_moves(side);
+			m1 = *m;
+		}
+		if(event->button.button == SDL_BUTTON_LEFT){
+			int x = event->button.x / 100;
+			int y = event->button.y / 100;
+			if(!selected){
+				erase_if(m1, [=](const Board::Move& c){return c.pos!=x+y*8; });
+				for(size_t i = 0; i < m1.size(); i++){
+					Board::Move& move = m1.at(i);
+					printf("%ld) Move from %s to %s, jump: %d\n", i, b.pretty_pos(move.pos).c_str(), b.pretty_pos(move.dst).c_str(), move.jump);
+				}
+				selected = true;
+				seqDepth = 0;
+			}else{
+				erase_if(m1, [=](const Board::Move& c){
+					if(seqDepth==0)	return c.dst != x + y * 8; 
+					else{
+						const Board::Move* move = &c;
+						for(int i = 0; i < seqDepth; i++){
+							move = move->seq;
+						}
+						return move->dst == x + y * 8;
+					}
+				});
+				seqDepth++;
+			}
+			if(m1.size() == 1){
+				b.make_move(&m1.at(0));
+				hist.push_back(m1.at(0));
+				side = !side;
+				delete m;
+				m = NULL;
+				m1.clear();
+				seqDepth = 0;
+			}
+		} else if(event->button.button==SDL_BUTTON_RIGHT){
+			m1 = *m;
+			selected = false;
+			seqDepth = 0;
+		}
+	}
+	return SDL_APP_CONTINUE;
+}
+
+void SDL_AppQuit(void* appstate, SDL_AppResult result){
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	return 0;
 }
