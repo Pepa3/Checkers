@@ -42,8 +42,8 @@ int main(int argc, char** argv){
 	vector<cv::Mat> images = vector<cv::Mat>(count);
 	cout << "Found " << count << " images" << endl;
 	for(size_t i = 0; i < count; i++)
-		images[i]=cv::imread(fn[i]);
-		//cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);//HSV is worse
+		//images[i]=cv::imread(fn[i]);
+		cv::cvtColor(cv::imread(fn[i]),images[i], cv::COLOR_BGR2GRAY);//HSV is worse
 	size_t current = 0;
 	cv::Mat mTrans;
 	cv::Mat Irender, Iorig, Itrans, ItransRend, IprocLast, Idiff, Iproc, Icontours;
@@ -56,6 +56,7 @@ int main(int argc, char** argv){
 	cv::resize(images[current], Iorig, {width, height});
 	Iproc = cv::Mat::zeros(8, 8, CV_8UC1);
 	Itrans = Iorig.clone();
+	//vector<cv::Vec3f> circles;
 
 	while(!quit){
 		int key;
@@ -89,6 +90,21 @@ int main(int argc, char** argv){
 					//diff Idiff
 					cv::absdiff(Iproc, IprocLast, Idiff);
 					cv::imshow("difference", Idiff);
+					//vector<cv::Vec3f> circles;
+					/*cv::HoughCircles(Itrans, circles, cv::HOUGH_GRADIENT, 1,
+						Itrans.rows / 16,  // change this value to detect circles with different distances to each other
+						100, 30, 1, 30 // change the last two parameters
+				   // (min_radius & max_radius) to detect larger circles
+					);
+					for(size_t i = 0; i < circles.size(); i++){
+						cv::Vec3i c = circles[i];
+						cv::Point center = cv::Point(c[0], c[1]);
+						// circle center
+						cv::circle(ItransRend, center, 1, cv::Scalar(0, 100, 100), 3, cv::LINE_AA);
+						// circle outline
+						int radius = c[2];
+						cv::circle(ItransRend, center, radius, cv::Scalar(255, 0, 255), 3, cv::LINE_AA);
+					}*/
 					ItransRend = Itrans.clone();
 					for(int i = 1; i <= 8; i++){
 						cv::line(ItransRend, cv::Point2f(i * (width / 8), 0), cv::Point2f(i * width / 8, height), cv::Scalar(0, 255, 0));

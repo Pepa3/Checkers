@@ -12,7 +12,7 @@
 
 namespace h{
 	const size_t width = 900, height = 700;
-#define rect(width,height,offset) (cv::Point2f[4]){cv::Point2f{(offset),(offset)},{(width)-(offset),(offset)},{(width)-(offset),(height)-(offset)},{(offset),(height)-(offset)}}
+#define rect(width,height,offset) {cv::Point2f{(offset),(offset)},{(width)-(offset),(offset)},{(width)-(offset),(height)-(offset)},{(offset),(height)-(offset)}}
 
 void p4(cv::Mat frame, const cv::Scalar color, const cv::Point2f p1, const cv::Point2f p2, const cv::Point2f p3, const cv::Point2f p4){
 	cv::line(frame,p1,p2,color);
